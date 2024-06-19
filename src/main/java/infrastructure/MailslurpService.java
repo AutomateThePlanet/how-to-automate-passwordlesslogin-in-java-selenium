@@ -54,63 +54,16 @@ public class MailslurpService {
 
     @SneakyThrows
     public static InboxDto createInbox(String name) {
-        InboxDto inbox = inboxControllerApi.createInbox(null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        InboxDto inbox = inboxControllerApi.createInbox(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         return inbox;
     }
 
     @SneakyThrows
-    public static Email waitForLatestEmail(InboxDto inbox, OffsetDateTime since) {
+    public static Email waitForLatestEmail(InboxDto inbox, OffsetDateTime since) throws ApiException {
         var waitForControllerApi = new WaitForControllerApi(defaultClient);
         Email receivedEmail = waitForControllerApi
                 .waitForLatestEmail(inbox.getId(), TIMEOUT, false, null, since, null, 10000L);
 
         return receivedEmail;
-    }
-
-    public static void sendEmail(InboxDto inbox, String toEmail) throws ApiException {
-        var emailBody = ResourcesReader.getFileAsString(MailslurpService.class, "sample-email.html");
-        // send HTML body email
-        SendEmailOptions sendEmailOptions = new SendEmailOptions()
-                .to(Collections.singletonList(toEmail))
-                .subject("HTML BODY email Interaction")
-                .body(emailBody);
-
-        inboxControllerApi.sendEmail(inbox.getId(), sendEmailOptions);
-    }
-
-    @SneakyThrows
-    private static String loadEmailBody(WebDriver driver, String htmlBody) {
-        htmlBody = htmlBody.replace("\n", "").replace("\\/", "/").replace("\\\"", "\"");
-        String fileName = String.format("%s.html", TimestampBuilder.getGuid());
-        var file = writeStringToTempFile(htmlBody);
-        driver.get(file.toPath().toUri().toString());
-
-        //driver.get("http://local-folder.lambdatest.com/" + fileName);
-
-        return htmlBody;
-    }
-
-    @SneakyThrows
-    public static String loadEmailBody(WebDriver driver, String htmlBody, boolean cloudExecuted) {
-        htmlBody = htmlBody.replace("\n", "").replace("\\/", "/").replace("\\\"", "\"");
-        String fileName = String.format("%s.html", TimestampBuilder.getGuid());
-        var file = writeStringToTempFile(htmlBody);
-        driver.get(file.toPath().toUri().toString());
-
-        if (cloudExecuted) {
-            driver.get("http://local-folder.lambdatest.com/" + fileName);
-        } else {
-            driver.get(file.toPath().toUri().toString());
-        }
-
-        return htmlBody;
-    }
-
-    private static File writeStringToTempFile(String fileContent) throws IOException {
-        Path tempFile = Files.createTempFile(null, ".html");
-        try (var bw = new BufferedWriter(new FileWriter(tempFile.toFile()))) {
-            bw.write(fileContent);
-        }
-        return tempFile.toFile();
     }
 }

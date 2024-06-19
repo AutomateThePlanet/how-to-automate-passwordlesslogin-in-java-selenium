@@ -55,6 +55,32 @@ public class SMSPasswordlessLoginTests {
 
     @Test
     public void loginSuccessfully_usingSms() {
+        driver.navigate().to("https://localhost:3000/");
+        var smsTab = driver.findElement(By.xpath("//a[text()='SMS']"));
+        smsTab.click();
+        var phoneInput = driver.findElement(By.id("phoneNumber"));
+        phoneInput.sendKeys(TWILIO_PHONE_NUMBER);
+        var sendSmsButton = driver.findElement(By.xpath("//button[text()='Send SMS Code']"));
+        sendSmsButton.click();
+
+        Message latestMessage = getLatestSMS();
+
+        var smsCodeInput = driver.findElement(By.id("smsCode"));
+        String smsCode = extractCode(latestMessage.getBody());
+        smsCodeInput.sendKeys(smsCode);
+
+        var verifyButton = driver.findElement(By.xpath("//button[text()='Verify SMS Code']"));
+        verifyButton.click();
+
+
+        var userName = driver.findElement(By.id("username"));
+
+        Assertions.assertTrue(userName.getText().contains("User"));
+
+        var logoutButton = driver.findElement(By.xpath("//a[text()='Logout']"));
+        logoutButton.click();
+
+
     }
 
 

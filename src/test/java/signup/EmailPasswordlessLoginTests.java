@@ -40,7 +40,8 @@ public class EmailPasswordlessLoginTests {
 
     @BeforeAll
     public static void setUpClass() {
-        WebDriverManager.chromedriver().setup();
+        WebDriverManager.chromedriver().clearDriverCache().setup();
+       WebDriverManager.chromedriver().setup();
     }
 
     @BeforeEach
@@ -68,14 +69,44 @@ public class EmailPasswordlessLoginTests {
     @Test
     public void loginSuccessfully_usingEmail() throws ApiException {
         driver.navigate().to("https://localhost:3000/");
+
+        var emailTab = driver.findElement(By.xpath("//a[text()='Email']"));
+        emailTab.click();
+
+        InboxDto inbox = inboxControllerApi.createInbox(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+
+        var emailInput = driver.findElement(By.id("email"));
+        emailInput.sendKeys(inbox.getEmailAddress());
+
+        var sendLoginCode = driver.findElement(By.xpath("//button[text()='Send Login Code']"));
+        sendLoginCode.click();
+
+        var waitForControllerApi = new WaitForControllerApi(defaultClient);
+        var currentTime = OffsetDateTime.ofInstant(Instant.now(), ZoneId.systemDefault());
+        Email receivedEmail = waitForControllerApi
+                .waitForLatestEmail(inbox.getId(), TIMEOUT, false, null, currentTime, null, 10000L);
+
+        var emailCodeInput = driver.findElement(By.id("code"));
+        String emailCode = extractCode(receivedEmail.getBody());
+        emailCodeInput.sendKeys(emailCode);
+
+        var verifyButton = driver.findElement(By.xpath("//button[text()='Verify Code']"));
+        verifyButton.click();
+
+        var userName = driver.findElement(By.id("username"));
+
+        Assertions.assertTrue(userName.getText().contains("User"));
+
+        var logoutButton = driver.findElement(By.xpath("//a[text()='Logout']"));
+        logoutButton.click();
     }
 
     @Test
-    public void interactWithEmailBody() throws ApiException {
+    public void interactWithEmailBody() throws ApiException, IOException {
         var user = UserFactory.createDefault();
 
         var inboxControllerApi = new InboxControllerApi(defaultClient);
-        InboxDto inbox = inboxControllerApi.createInbox(null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        InboxDto inbox = inboxControllerApi.createInbox(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         String email = inbox.getEmailAddress();
         user.setEmail(email);
@@ -97,7 +128,7 @@ public class EmailPasswordlessLoginTests {
     }
 
     @SneakyThrows
-    private static void sendEmail(InboxDto inbox, String toEmail) {
+    private static void sendEmail(InboxDto inbox, String toEmail) throws ApiException {
         var emailBody = ResourcesReader.getFileAsString(EmailPasswordlessLoginTests.class, "sample-email.html");
         // send HTML body email
         SendEmailOptions sendEmailOptions = new SendEmailOptions()
@@ -109,7 +140,7 @@ public class EmailPasswordlessLoginTests {
     }
 
     @SneakyThrows
-    private static String loadEmailBody(WebDriver driver, String htmlBody) {
+    private static String loadEmailBody(WebDriver driver, String htmlBody) throws IOException {
         htmlBody = htmlBody.replace("\n", "").replace("\\/", "/").replace("\\\"", "\"");
         //String fileName = String.format("%s.html", TimestampBuilder.getGuid());
         var file = writeStringToTempFile(htmlBody);
